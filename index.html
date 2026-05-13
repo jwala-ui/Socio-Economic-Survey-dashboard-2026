@@ -863,7 +863,7 @@ body.modal-open {
       </div>
       <h3>Survey Analytics</h3>
       <p>Open summary charts and insights</p>
-      <<button type="button" class="card-button" onclick="openSurveyAnalyticsPopup()" aria-label="Open Survey Analytics">
+      <button type="button" class="card-button" onclick="openSurveyAnalyticsPopup()" aria-label="Open Survey Analytics">
   Open Now
   <span aria-hidden="true">→</span>
 </button>
@@ -986,6 +986,55 @@ body.modal-open {
       <button type="button" class="student-primary-btn" onclick="openIndividualReportPage()">
   View Reports
 </button>
+    </div>
+
+  </div>
+</div>
+  <!-- Survey Analytics Popup -->
+<div id="surveyAnalyticsModal" class="student-modal-overlay" onclick="closeSurveyAnalyticsOnOverlay(event)">
+  <div class="student-modal-card" role="dialog" aria-modal="true" aria-labelledby="surveyAnalyticsTitle">
+
+    <div class="student-modal-header">
+      <div class="student-modal-title">
+        <h2 id="surveyAnalyticsTitle">Survey Analytics</h2>
+        <p>Enter Registration No / Hall Ticket No and registered Email ID to open the student wise analytics report.</p>
+      </div>
+
+      <button type="button" class="student-modal-close" onclick="closeSurveyAnalyticsPopup()" aria-label="Close popup">
+        ×
+      </button>
+    </div>
+
+    <div class="student-form-group">
+      <label for="analyticsRegistrationNo">Registration No / Hall Ticket No</label>
+      <input
+        type="text"
+        id="analyticsRegistrationNo"
+        placeholder="Enter Registration No / Hall Ticket No"
+        autocomplete="off"
+      >
+    </div>
+
+    <div class="student-form-group">
+      <label for="analyticsEmailId">Email ID</label>
+      <input
+        type="email"
+        id="analyticsEmailId"
+        placeholder="Enter registered Email ID"
+        autocomplete="email"
+      >
+    </div>
+
+    <div id="surveyAnalyticsError" class="student-error-message"></div>
+
+    <div class="student-modal-actions">
+      <button type="button" class="student-secondary-btn" onclick="closeSurveyAnalyticsPopup()">
+        Cancel
+      </button>
+
+      <button type="button" class="student-primary-btn" onclick="openSurveyAnalyticsPage()">
+        Generate Analytics
+      </button>
     </div>
 
   </div>
@@ -1330,6 +1379,78 @@ async function submitStudentSurveyStatusReport() {
       error.message || "Survey status could not be loaded. Please try again."
     );
   }
+}
+    function openSurveyAnalyticsPopup() {
+  const modal = document.getElementById("surveyAnalyticsModal");
+  const errorBox = document.getElementById("surveyAnalyticsError");
+
+  document.getElementById("analyticsRegistrationNo").value = "";
+  document.getElementById("analyticsEmailId").value = "";
+
+  errorBox.textContent = "";
+  errorBox.classList.remove("show");
+
+  modal.classList.add("active");
+  document.body.classList.add("modal-open");
+
+  setTimeout(function () {
+    document.getElementById("analyticsRegistrationNo").focus();
+  }, 100);
+}
+
+function closeSurveyAnalyticsPopup() {
+  const modal = document.getElementById("surveyAnalyticsModal");
+
+  modal.classList.remove("active");
+  document.body.classList.remove("modal-open");
+}
+
+function closeSurveyAnalyticsOnOverlay(event) {
+  if (event.target.id === "surveyAnalyticsModal") {
+    closeSurveyAnalyticsPopup();
+  }
+}
+
+function showSurveyAnalyticsError(message) {
+  const errorBox = document.getElementById("surveyAnalyticsError");
+
+  errorBox.textContent = message;
+  errorBox.classList.add("show");
+}
+
+function openSurveyAnalyticsPage() {
+  const registrationNo = document.getElementById("analyticsRegistrationNo").value.trim();
+  const emailId = document.getElementById("analyticsEmailId").value.trim().toLowerCase();
+
+  const errorBox = document.getElementById("surveyAnalyticsError");
+  errorBox.textContent = "";
+  errorBox.classList.remove("show");
+
+  if (!registrationNo) {
+    showSurveyAnalyticsError("Please enter Registration No / Hall Ticket No.");
+    return;
+  }
+
+  if (!emailId) {
+    showSurveyAnalyticsError("Please enter registered Email ID.");
+    return;
+  }
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailPattern.test(emailId)) {
+    showSurveyAnalyticsError("Please enter a valid Email ID.");
+    return;
+  }
+
+  const analyticsUrl =
+    "https://script.google.com/macros/s/AKfycbzfUu-dfNXLgMNRUz0jeDj6Jidjq_6C1Ig3nnvjWUD3ET-g9TuyL1O7fSpJFgIUkVbe/exec?page=surveyAnalyticsPage" +
+    "&hallTicketNo=" + encodeURIComponent(registrationNo) +
+    "&emailId=" + encodeURIComponent(emailId);
+
+  window.open(analyticsUrl, "_blank", "noopener,noreferrer");
+
+  closeSurveyAnalyticsPopup();
 }
     function handleClick(section) {
       const targetUrl = dashboardLinks[section];
