@@ -983,9 +983,9 @@ body.modal-open {
         Cancel
       </button>
 
-      <button type="button" class="student-primary-btn" onclick="submitStudentSurveyStatusReport()">
-        View Reports
-      </button>
+      <button type="button" class="student-primary-btn" onclick="openIndividualReportPage()">
+  View Reports
+</button>
     </div>
 
   </div>
@@ -1246,7 +1246,38 @@ function cleanupDashboardJsonp(callbackName, script) {
     window[callbackName] = undefined;
   }
 }
+function openIndividualReportPage() {
+  const registrationNo = document.getElementById("statusRegistrationNo").value.trim();
+  const emailId = document.getElementById("statusEmailId").value.trim().toLowerCase();
 
+  clearStudentSurveyStatusOutput();
+
+  if (!registrationNo) {
+    showStudentSurveyStatusMessage("error", "Please enter your Registration No.");
+    return;
+  }
+
+  if (!emailId) {
+    showStudentSurveyStatusMessage("error", "Please enter your registered Email ID.");
+    return;
+  }
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailPattern.test(emailId)) {
+    showStudentSurveyStatusMessage("error", "Please enter a valid Email ID.");
+    return;
+  }
+
+  const individualReportUrl =
+    "https://script.google.com/macros/s/AKfycbzfUu-dfNXLgMNRUz0jeDj6Jidjq_6C1Ig3nnvjWUD3ET-g9TuyL1O7fSpJFgIUkVbe/exec?page=individualSurveyReportPage" +
+    "&registrationNo=" + encodeURIComponent(registrationNo) +
+    "&emailId=" + encodeURIComponent(emailId);
+
+  window.open(individualReportUrl, "_blank", "noopener,noreferrer");
+
+  closeStudentSurveyStatusReport();
+}
 async function submitStudentSurveyStatusReport() {
   const registrationNo = document.getElementById("statusRegistrationNo").value.trim();
   const emailId = document.getElementById("statusEmailId").value.trim().toLowerCase();
