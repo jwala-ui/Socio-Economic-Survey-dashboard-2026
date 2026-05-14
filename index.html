@@ -1417,8 +1417,53 @@ function showSurveyAnalyticsError(message) {
   errorBox.textContent = message;
   errorBox.classList.add("show");
 }
+function dashboardJsonpRequest(params) {
+  return new Promise(function(resolve, reject) {
+    const callbackName =
+      "dashboardCallback_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
 
-function openSurveyAnalyticsPage() {
+    params.callback = callbackName;
+
+    const query = Object.keys(params)
+      .map(function(key) {
+        return encodeURIComponent(key) + "=" + encodeURIComponent(params[key]);
+      })
+      .join("&");
+
+    const script = document.createElement("script");
+
+    const timer = setTimeout(function() {
+      cleanup();
+      reject(new Error("Request timed out. Please try again."));
+    }, 15000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[callbackName];
+
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    }
+
+    window[callbackName] = function(response) {
+      cleanup();
+      resolve(response);
+    };
+
+    script.onerror = function() {
+      cleanup();
+      reject(new Error("Unable to verify student details right now."));
+    };
+
+    script.src =
+      "https://script.google.com/macros/s/AKfycbzfUu-dfNXLgMNRUz0jeDj6Jidjq_6C1Ig3nnvjWUD3ET-g9TuyL1O7fSpJFgIUkVbe/exec?" +
+      query;
+
+    document.body.appendChild(script);
+  });
+}
+async function openSurveyAnalyticsPage() {
   const registrationNo = document.getElementById("analyticsRegistrationNo").value.trim();
   const emailId = document.getElementById("analyticsEmailId").value.trim().toLowerCase();
 
@@ -1443,28 +1488,45 @@ function openSurveyAnalyticsPage() {
     return;
   }
 
-  const analyticsUrl =
-    "https://script.google.com/macros/s/AKfycbzfUu-dfNXLgMNRUz0jeDj6Jidjq_6C1Ig3nnvjWUD3ET-g9TuyL1O7fSpJFgIUkVbe/exec?page=surveyAnalyticsPage" +
-    "&hallTicketNo=" + encodeURIComponent(registrationNo) +
-    "&emailId=" + encodeURIComponent(emailId);
+  const button = document.querySelector("#surveyAnalyticsModal .student-primary-btn");
+  const originalText = button ? button.textContent : "Generate Analytics";
 
-  window.open(analyticsUrl, "_blank", "noopener,noreferrer");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Checking...";
+  }
 
-  closeSurveyAnalyticsPopup();
-}
-    function handleClick(section) {
-      const targetUrl = dashboardLinks[section];
+  try {
+    const response = await dashboardJsonpRequest({
+      action: "validateSurveyAnalyticsAccess",
+      hallTicketNo: registrationNo,
+      emailId: emailId
+    });
 
-      if (targetUrl) {
-        window.open(targetUrl, "_blank", "noopener,noreferrer");
-        return;
-      }
-
-      alert(
-        "Opening: " + section +
-        "\n\nPlease add the target URL for this section inside the dashboardLinks object in the script."
+    if (!response || response.status !== "success") {
+      showSurveyAnalyticsError(
+        response && response.message
+          ? response.message
+          : "Unable to verify student details."
       );
+      return;
     }
-  </script>
-</body>
-</html>
+
+    const analyticsUrl =
+      "https://script.google.com/macros/s/AKfycbzfUu-dfNXLgMNRUz0jeDj6Jidjq_6C1Ig3nnvjWUD3ET-g9TuyL1O7fSpJFgIUkVbe/exec?page=surveyAnalyticsPage" +
+      "&hallTicketNo=" + encodeURIComponent(registrationNo) +
+      "&emailId=" + encodeURIComponent(emailId);
+
+    window.open(analyticsUrl, "_blank", "noopener,noreferrer");
+
+    closeSurveyAnalyticsPopup();
+
+  } catch (error) {
+    showSurveyAnalyticsError(error.message || "Unable to verify student details right now.");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
+}
