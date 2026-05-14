@@ -1246,7 +1246,7 @@ function renderDashboardSurveyStatus(data) {
   tableWrap.classList.add("show");
 }
 
-function dashboardJsonpRequest(params) {
+function surveyFormJsonpRequest(params) {
   return new Promise(function (resolve, reject) {
     const appsScriptUrl = "https://script.google.com/macros/s/AKfycbxV6D3HaToZ1KkDEYl80IlPLRgGhVeEfB0dsXKSSY5nDfjBljqE0BzUSen9yhuXz4O4FA/exec";
     const callbackName = "dashboardStatusCallback_" + Date.now();
@@ -1353,7 +1353,7 @@ async function submitStudentSurveyStatusReport() {
   showStudentSurveyStatusMessage("info", "Loading your individual survey reports. Please wai...");
 
   try {
-    const response = await dashboardJsonpRequest({
+    const response = await surveyFormJsonpRequest({
       action: "studentProgress",
       registrationNo: registrationNo,
       emailId: emailId
@@ -1530,3 +1530,27 @@ async function openSurveyAnalyticsPage() {
     }
   }
 }
+
+
+function handleClick(section) {
+  const url = dashboardLinks[section];
+
+  if (!url) {
+    alert(section + " link is not configured yet.");
+    return;
+  }
+
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+document.addEventListener("keydown", function(event) {
+  if (event.key === "Escape") {
+    if (typeof closeStudentFinalReportModal === "function") closeStudentFinalReportModal();
+    if (typeof closeStudentSurveyStatusReport === "function") closeStudentSurveyStatusReport();
+    if (typeof closeSurveyAnalyticsPopup === "function") closeSurveyAnalyticsPopup();
+  }
+});
+
+  </script>
+</body>
+</html>
