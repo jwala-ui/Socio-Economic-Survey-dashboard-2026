@@ -1039,6 +1039,28 @@ body.modal-open {
 
   </div>
 </div>
+  <div id="studentFinalReportSuccessModal" class="student-modal-overlay" onclick="closeStudentFinalReportSuccessOnOverlay(event)">
+  <div class="student-modal-card" role="dialog" aria-modal="true">
+    <div class="student-modal-header">
+      <div class="student-modal-title">
+        <h2>Success</h2>
+        <p id="studentFinalReportSuccessMessage">
+          Your Socio Economic Survey Final Report has been sent to your registered email ID.
+        </p>
+      </div>
+
+      <button type="button" class="student-modal-close" onclick="closeStudentFinalReportSuccessPopup()" aria-label="Close popup">
+        ×
+      </button>
+    </div>
+
+    <div class="student-modal-actions">
+      <button type="button" class="student-primary-btn" onclick="closeStudentFinalReportSuccessPopup()">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
   <script>
     const dashboardLinks = {
     "Socio Economic Survey Form 2026": "https://jwala-ui.github.io/Socio-Economic-Survey-2026/",
@@ -1133,6 +1155,28 @@ function studentFinalReportJsonpRequest(params) {
     document.body.appendChild(script);
   });
 }
+    function showStudentFinalReportSuccessPopup(studentName) {
+  studentName = String(studentName || "").trim();
+
+  const message = studentName
+    ? "Dear " + studentName + ", your Socio Economic Survey Final Report has been sent to your registered email ID."
+    : "Your Socio Economic Survey Final Report has been sent to your registered email ID.";
+
+  document.getElementById("studentFinalReportSuccessMessage").textContent = message;
+  document.getElementById("studentFinalReportSuccessModal").classList.add("active");
+  document.body.classList.add("modal-open");
+}
+
+function closeStudentFinalReportSuccessPopup() {
+  document.getElementById("studentFinalReportSuccessModal").classList.remove("active");
+  document.body.classList.remove("modal-open");
+}
+
+function closeStudentFinalReportSuccessOnOverlay(event) {
+  if (event.target.id === "studentFinalReportSuccessModal") {
+    closeStudentFinalReportSuccessPopup();
+  }
+}
 async function submitStudentFinalReport() {
   const registrationNo = document.getElementById("studentRegistrationNo").value.trim();
   const emailId = document.getElementById("studentEmailId").value.trim().toLowerCase();
@@ -1167,30 +1211,28 @@ async function submitStudentFinalReport() {
   }
 
   try {
-    const response = await studentFinalReportJsonpRequest({
+    const progressResponse = await studentFinalReportJsonpRequest({
       action: "studentProgress",
       registrationNo: registrationNo,
       emailId: emailId
     });
 
-    if (!response || response.status !== "success") {
+    if (!progressResponse || progressResponse.status !== "success") {
       showStudentFinalReportError(
-        response && response.message
-          ? response.message
+        progressResponse && progressResponse.message
+          ? progressResponse.message
           : "Unable to verify student details."
       );
       return;
     }
 
     const completed = Number(
-      response.completed ||
-      (Array.isArray(response.surveys) ? response.surveys.length : 0)
+      progressResponse.completed ||
+      (Array.isArray(progressResponse.surveys) ? progressResponse.surveys.length : 0)
     );
 
     if (completed === 0) {
-      showStudentFinalReportError(
-        "No submitted surveys found for this Registration No and Email ID."
-      );
+      showStudentFinalReportError("No submitted surveys found for this Registration No and Email ID.");
       return;
     }
 
@@ -1203,24 +1245,40 @@ async function submitStudentFinalReport() {
       return;
     }
 
-    const appsScriptUrl =
-      "https://script.google.com/macros/s/AKfycbxV6D3HaToZ1KkDEYl80IlPLRgGhVeEfB0dsXKSSY5nDfjBljqE0BzUSen9yhuXz4O4FA/exec";
+    if (button) {
+      button.textContent = "Sending Report...";
+    }
 
-    const finalReportUrl =
-      appsScriptUrl +
-      "?action=studentFinalReport" +
-      "&registrationNo=" + encodeURIComponent(registrationNo) +
-      "&emailId=" + encodeURIComponent(emailId);
+    const finalReportResponse = await studentFinalReportJsonpRequest({
+      action: "studentFinalReport",
+      registrationNo: registrationNo,
+      emailId: emailId
+    });
 
-    window.open(finalReportUrl, "_blank", "noopener,noreferrer");
+    if (!finalReportResponse || finalReportResponse.status !== "success") {
+      showStudentFinalReportError(
+        finalReportResponse && finalReportResponse.message
+          ? finalReportResponse.message
+          : "Unable to send final survey report."
+      );
+      return;
+    }
 
     closeStudentFinalReportModal();
+
+    const studentName =
+      finalReportResponse.studentName ||
+      progressResponse.studentName ||
+      progressResponse.nameOfStudent ||
+      "";
+
+    showStudentFinalReportSuccessPopup(studentName);
 
   } catch (error) {
     showStudentFinalReportError(
       error && error.message
         ? error.message
-        : "Unable to verify student details right now."
+        : "Unable to send final report right now."
     );
   } finally {
     if (button) {
