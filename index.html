@@ -1087,10 +1087,59 @@ function showStudentFinalReportError(message) {
   errorBox.textContent = message;
   errorBox.classList.add("show");
 }
+function studentFinalReportJsonpRequest(params) {
+  return new Promise(function(resolve, reject) {
+    const callbackName =
+      "studentFinalReportCallback_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
 
-function submitStudentFinalReport() {
+    params.callback = callbackName;
+
+    const query = Object.keys(params)
+      .map(function(key) {
+        return encodeURIComponent(key) + "=" + encodeURIComponent(params[key]);
+      })
+      .join("&");
+
+    const script = document.createElement("script");
+
+    const timer = setTimeout(function() {
+      cleanup();
+      reject(new Error("Request timed out. Please try again."));
+    }, 15000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[callbackName];
+
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    }
+
+    window[callbackName] = function(response) {
+      cleanup();
+      resolve(response);
+    };
+
+    script.onerror = function() {
+      cleanup();
+      reject(new Error("Unable to verify student details right now."));
+    };
+
+    script.src =
+      "https://script.google.com/macros/s/AKfycbxV6D3HaToZ1KkDEYl80IlPLRgGhVeEfB0dsXKSSY5nDfjBljqE0BzUSen9yhuXz4O4FA/exec?" +
+      query;
+
+    document.body.appendChild(script);
+  });
+}
+async function submitStudentFinalReport() {
   const registrationNo = document.getElementById("studentRegistrationNo").value.trim();
   const emailId = document.getElementById("studentEmailId").value.trim().toLowerCase();
+
+  const errorBox = document.getElementById("studentFinalReportError");
+  errorBox.textContent = "";
+  errorBox.classList.remove("show");
 
   if (!registrationNo) {
     showStudentFinalReportError("Please enter your Registration No.");
@@ -1109,30 +1158,77 @@ function submitStudentFinalReport() {
     return;
   }
 
-  const appsScriptUrl = "https://script.google.com/macros/s/AKfycbxV6D3HaToZ1KkDEYl80IlPLRgGhVeEfB0dsXKSSY5nDfjBljqE0BzUSen9yhuXz4O4FA/exec";
+  const button = document.querySelector("#studentFinalReportModal .student-primary-btn");
+  const originalText = button ? button.textContent : "View Final Report";
 
-  const finalReportUrl =
-    appsScriptUrl +
-    "?action=studentFinalReport" +
-    "&registrationNo=" + encodeURIComponent(registrationNo) +
-    "&emailId=" + encodeURIComponent(emailId);
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Checking...";
+  }
 
-  window.open(finalReportUrl, "_blank", "noopener,noreferrer");
+  try {
+    const response = await studentFinalReportJsonpRequest({
+      action: "studentProgress",
+      registrationNo: registrationNo,
+      emailId: emailId
+    });
 
-  closeStudentFinalReportModal();
-}
-
-document.addEventListener("keydown", function (event) {
-  if (event.key === "Escape") {
-    if (typeof closeStudentFinalReportModal === "function") {
-      closeStudentFinalReportModal();
+    if (!response || response.status !== "success") {
+      showStudentFinalReportError(
+        response && response.message
+          ? response.message
+          : "Unable to verify student details."
+      );
+      return;
     }
 
-    if (typeof closeStudentSurveyStatusReport === "function") {
-      closeStudentSurveyStatusReport();
+    const completed = Number(
+      response.completed ||
+      (Array.isArray(response.surveys) ? response.surveys.length : 0)
+    );
+
+    if (completed === 0) {
+      showStudentFinalReportError(
+        "No submitted surveys found for this Registration No and Email ID."
+      );
+      return;
+    }
+
+    if (completed < 50) {
+      showStudentFinalReportError(
+        "Final Survey Report will be available only after completing 50 surveys. You have completed " +
+        completed +
+        " out of 50 surveys."
+      );
+      return;
+    }
+
+    const appsScriptUrl =
+      "https://script.google.com/macros/s/AKfycbxV6D3HaToZ1KkDEYl80IlPLRgGhVeEfB0dsXKSSY5nDfjBljqE0BzUSen9yhuXz4O4FA/exec";
+
+    const finalReportUrl =
+      appsScriptUrl +
+      "?action=studentFinalReport" +
+      "&registrationNo=" + encodeURIComponent(registrationNo) +
+      "&emailId=" + encodeURIComponent(emailId);
+
+    window.open(finalReportUrl, "_blank", "noopener,noreferrer");
+
+    closeStudentFinalReportModal();
+
+  } catch (error) {
+    showStudentFinalReportError(
+      error && error.message
+        ? error.message
+        : "Unable to verify student details right now."
+    );
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
     }
   }
-});
+}
 function openStudentSurveyStatusReport() {
   const modal = document.getElementById("studentSurveyStatusModal");
 
