@@ -1684,8 +1684,6 @@ async function openSurveyAnalyticsPage() {
     }
   }
 }
-
-
 function handleClick(section) {
   const url = dashboardLinks[section];
 
@@ -1694,7 +1692,7 @@ function handleClick(section) {
     return;
   }
 
-  window.open(url, "_blank", "noopener,noreferrer");
+  window.location.href = url;
 }
 
 document.addEventListener("keydown", function(event) {
